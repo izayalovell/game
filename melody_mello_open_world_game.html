@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Melody Mello - Open World Music Adventure</title>
+    <!-- Tailwind CSS for modern UI overlays -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter & Press Start 2P -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+            overflow: hidden;
+            user-select: none;
+        }
+        .pixel-font {
+            font-family: 'Press Start 2P', monospace;
+        }
+        canvas {
+            display: block;
+            background: #1e293b;
+            cursor: crosshair;
+        }
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1e293b;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 4px;
+        }
+        .glow-effect {
+            box-shadow: 0 0 25px rgba(56, 189, 248, 0.3);
+        }
+    </style>
+</head>
+<body class="w-screen h-screen flex flex-col justify-between relative">
+
+    <header class="absolute top-4 left-4 right-4 z-20 flex flex-col md:flex-row justify-between items-start md:items-center gap-3 pointer-events-none">
+        <!-- Player Info Card -->
+        <div class="bg-slate-900/90 backdrop-blur-md border border-slate-700/80 px-4 py-3 rounded-2xl shadow-xl flex items-center gap-4 pointer-events-auto">
+            <div class="w-12 h-12 rounded-xl bg-gradient-to-tr from-cyan-500 to-indigo-600 flex items-center justify-center font-bold text-xl shadow-lg text-white" id="player-avatar">
+                🎸
+            </div>
+            <div>
+                <div class="flex items-center gap-2">
+                    <h1 class="font-extrabold text-white text-lg tracking-wide" id="player-name">Melody Maestro</h1>
+                    <span class="text-xs bg-cyan-500/20 text-cyan-300 font-semibold px-2 py-0.5 rounded-full border border-cyan-500/30" id="player-level-badge">Lvl 1</span>
+                </div>
+                <div class="flex items-center gap-3 text-xs text-slate-300 mt-1">
+                    <span class="flex items-center gap-1">⭐ <strong id="star-count" class="text-amber-400">0</strong> Stars</span>
+                    <span class="flex items-center gap-1">🎵 <strong id="note-count" class="text-emerald-400">0</strong> Notes</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Active Quest & Instructions -->
+        <div class="bg-slate-900/90 backdrop-blur-md border border-slate-700/80 px-4 py-3 rounded-2xl shadow-xl flex flex-col gap-1 pointer-events-auto max-w-sm">
+            <div class="flex items-center justify-between">
+                <span class="text-xs uppercase tracking-wider font-bold text-cyan-400 flex items-center gap-1">
+                    🎯 Active Quest
+                </span>
+                <span class="text-[10px] text-slate-400 bg-slate-800 px-2 py-0.5 rounded" id="controls-hint">Press [E] to Interact</span>
+            </div>
+            <p class="text-sm font-medium text-slate-200" id="current-quest-text">Explore Melody Mello and visit the 5 musical districts!</p>
+            <!-- XP Progress Bar -->
+            <div class="w-full bg-slate-800 rounded-full h-2 mt-1 overflow-hidden border border-slate-700">
+                <div id="xp-bar" class="bg-gradient-to-r from-cyan-400 to-indigo-500 h-full transition-all duration-300" style="width: 0%;"></div>
+            </div>
+        </div>
+    </header>
+
+    <main class="relative flex-1 w-full h-full">
+        <canvas id="gameCanvas" class="w-full h-full"></canvas>
+
+        <!-- District Banner Floating Notification -->
+        <div id="district-banner" class="absolute top-24 left-1/2 -translate-x-1/2 bg-slate-900/80 backdrop-blur-md border border-cyan-500/40 text-cyan-300 px-6 py-2 rounded-full font-bold text-sm tracking-widest shadow-2xl transition-opacity duration-500 opacity-0 pointer-events-none z-10">
+            🎸 GUITAR GROVE
+        </div>
+
+        <!-- Interaction Prompt Popup -->
+        <div id="interaction-prompt" class="absolute bottom-16 left-1/2 -translate-x-1/2 bg-cyan-600 hover:bg-cyan-500 text-white font-bold px-6 py-3 rounded-2xl shadow-2xl transition-all duration-200 cursor-pointer hidden z-20 flex items-center gap-2 animate-bounce">
+            <span>Press [E] or Click to Interact</span>
+        </div>
+    </main>
+
+    <footer class="absolute bottom-3 left-4 right-4 z-20 flex justify-between items-center pointer-events-none text-xs text-slate-400">
+        <div class="bg-slate-900/80 backdrop-blur-md px-3 py-1.5 rounded-xl border border-slate-800 pointer-events-auto flex items-center gap-3">
+            <span><strong class="text-cyan-400">WASD</strong> Move</span>
+            <span><strong class="text-cyan-400">SHIFT</strong> Sprint</span>
+            <span><strong class="text-cyan-400">E</strong> Interact</span>
+            <span><strong class="text-cyan-400">I</strong> Inventory</span>
+            <span><strong class="text-cyan-400">ESC</strong> Pause</span>
+        </div>
+        <div class="bg-slate-900/80 backdrop-blur-md px-3 py-1.5 rounded-xl border border-slate-800 pointer-events-auto flex items-center gap-2">
+            <button onclick="openInventoryModal()" class="hover:text-cyan-400 transition font-semibold">🎒 Inventory</button>
+            <span>•</span>
+            <button onclick="openSkillModal()" class="hover:text-cyan-400 transition font-semibold">📈 Skills</button>
+            <span>•</span>
+            <button onclick="saveGame()" class="hover:text-cyan-400 transition font-semibold">💾 Save</button>
+        </div>
+    </footer>
+
+    <!-- MODAL CONTAINERS -->
+    <div id="game-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+        <div id="modal-content" class="bg-slate-900 border border-slate-700 w-full max-w-2xl rounded-3xl p-6 shadow-2xl glow-effect relative flex flex-col max-h-[90vh]"></div>
+    </div>
+
+    <div id="sidebar-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+        <div id="sidebar-content" class="bg-slate-900 border border-slate-700 w-full max-w-xl rounded-3xl p-6 shadow-2xl relative flex flex-col max-h-[90vh]"></div>
+    </div>
+
+    <!-- NOTIFICATION TOAST -->
+    <div id="toast" class="fixed top-28 right-6 bg-slate-900/95 border border-cyan-500/50 text-white px-5 py-3 rounded-2xl shadow-2xl z-50 flex items-center gap-3 transition-all duration-300 translate-x-96 opacity-0">
+        <span id="toast-icon" class="text-2xl">✨</span>
+        <div>
+            <h4 id="toast-title" class="font-bold text-cyan-400 text-sm">Achievement Unlocked!</h4>
+            <p id="toast-desc" class="text-xs text-slate-300">You earned 50 XP.</p>
+        </div>
+    </div>
+
+    <script>
+        const SAVE_KEY = 'melody_mello_save_v1';
+        
+        let player = {
+            x: 2000,
+            y: 2000,
+            size: 28,
+            speed: 4.5,
+            sprintMultiplier: 1.6,
+            color: '#38bdf8',
+            name: 'Melody Maestro',
+            level: 1,
+            xp: 0,
+            maxXp: 100,
+            stars: 0,
+            notes: 15,
+            skills: {
+                guitar: 10,
+                theory: 10,
+                rhythm: 10,
+                production: 10
+            },
+            inventory: [
+                { id: 'starter_pick', name: 'Acoustic Pick', type: 'tool', icon: '🎸', desc: 'Standard pick for strumming chords.' },
+                { id: 'note_pad', name: 'Theory Notebook', type: 'item', icon: '📖', desc: 'Contains basic intervals and circle of fifths.' }
+            ],
+            completedQuests: []
+        };
+
+        let camera = { x: 0, y: 0 };
+        let keys = {};
+        let mouse = { x: 0, y: 0, clicked: false };
+        let currentDistrict = 'Melody Plaza';
+        let nearbyBuilding = null;
+        let nearbyNpc = null;
+        let activeModalOpen = false;
+
+        const WORLD_WIDTH = 4000;
+        const WORLD_HEIGHT = 4000;
+
+        const districts = [
+            { name: 'Melody Plaza', x: 1700, y: 1700, radius: 700, color: '#3b82f615', border: '#3b82f6', icon: '⭐', desc: 'Central hub with the grand statue of harmony.' },
+            { name: 'Guitar Grove', x: 600, y: 800, radius: 650, color: '#22c55e15', border: '#22c55e', icon: '🎸', desc: 'Lush green forests and the legendary Guitar Workshop.' },
+            { name: 'Harmony Hills', x: 3200, y: 800, radius: 650, color: '#a855f715', border: '#a855f7', icon: '🎼', desc: 'Zen mountainous sanctuary for music theory masters.' },
+            { name: 'Rhythm City', x: 800, y: 3100, radius: 650, color: '#ef444415', border: '#ef4444', icon: '🥁', desc: 'Neon cityscape pulsing with drumbeats and basslines.' },
+            { name: 'Creator Studio', x: 3200, y: 3100, radius: 650, color: '#f59e0b15', border: '#f59e0b', icon: '🎹', desc: 'Warm workshop for electronic production and beat making.' }
+        ];
+
+        const buildings = [
+            { id: 'guitar_shop', name: 'Guitar Grove Academy', district: 'Guitar Grove', x: 550, y: 700, w: 140, h: 100, color: '#15803d', icon: '🎸', challengeType: 'guitar' },
+            { id: 'theory_temple', name: 'Temple of Harmony', district: 'Harmony Hills', x: 3250, y: 700, w: 140, h: 100, color: '#7e22ce', icon: '🎼', challengeType: 'theory' },
+            { id: 'drum_club', name: 'Rhythm Underground Club', district: 'Rhythm City', x: 750, y: 3000, w: 140, h: 100, color: '#b91c1c', icon: '🥁', challengeType: 'rhythm' },
+            { id: 'synth_lab', name: 'Beat Lab & Studio', district: 'Creator Studio', x: 3150, y: 3000, w: 140, h: 100, color: '#b45309', icon: '🎹', challengeType: 'studio' },
+            { id: 'plaza_stage', name: 'Grand Melody Stage', district: 'Melody Plaza', x: 1900, y: 1900, w: 160, h: 120, color: '#1d4ed8', icon: '🌟', challengeType: 'quest_hub' }
+        ];
+
+        const npcs = [
+            { id: 'npc_luna', name: 'Luna (Guitarist)', district: 'Guitar Grove', x: 400, y: 900, icon: '👩‍🎤', dialog: "Welcome to Guitar Grove! Ready to master the G – Em – C – D progression?" },
+            { id: 'npc_maestro', name: 'Maestro Vance', district: 'Harmony Hills', x: 3400, y: 950, icon: '🧙‍♂️', dialog: "To understand music is to understand the universe. Let's test your theory knowledge." },
+            { id: 'npc_beat', name: 'DJ Pulse', district: 'Rhythm City', x: 950, y: 3200, icon: '🎧', dialog: "Feel the BPM! Can you keep up with our rhythm sync challenge?" },
+            { id: 'npc_melody', name: 'Aria Synth', district: 'Creator Studio', x: 3000, y: 3200, icon: '👩‍💻', dialog: "Let's lay down some fresh tracks in the Beat Maker!" }
+        ];
+
+        let collectibles = [];
+        function spawnCollectibles() {
+            collectibles = [];
+            for (let i = 0; i < 40; i++) {
+                collectibles.push({
+                    x: Math.random() * (WORLD_WIDTH - 200) + 100,
+                    y: Math.random() * (WORLD_HEIGHT - 200) + 100,
+                    type: Math.random() > 0.5 ? 'note' : 'star',
+                    collected: false
+                });
+            }
+        }
+
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        window.addEventListener('load', () => {
+            resizeCanvas();
+            loadGame();
+            spawnCollectibles();
+            requestAnimationFrame(gameLoop);
+        });
+
+        window.addEventListener('resize', resizeCanvas);
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+
+        window.addEventListener('keydown', (e) => {
+            keys[e.key.toLowerCase()] = true;
+            if (e.key === 'e' || e.key === 'E') {
+                handleInteraction();
+            }
+            if (e.key.toLowerCase() === 'i') {
+                openInventoryModal();
+            }
+            if (e.key === 'Escape') {
+                closeModal();
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            keys[e.key.toLowerCase()] = false;
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            mouse.x = e.clientX;
+            mouse.y = e.clientY;
+        });
+
+        canvas.addEventListener('click', () => {
+            if (nearbyBuilding || nearbyNpc) {
+                handleInteraction();
+            }
+        });
+
+        function gameLoop() {
+            update();
+            render();
+            requestAnimationFrame(gameLoop);
+        }
+
+        function update() {
+            if (activeModalOpen) return;
+
+            let dx = 0;
+            let dy = 0;
+            if (keys['w'] || keys['arrowup']) dy -= 1;
+            if (keys['s'] || keys['arrowdown']) dy += 1;
+            if (keys['a'] || keys['arrowleft']) dx -= 1;
+            if (keys['d'] || keys['arrowright']) dx += 1;
+
+            if (dx !== 0 && dy !== 0) {
+                dx *= 0.7071;
+                dy *= 0.7071;
+            }
+
+            let currentSpeed = player.speed;
+            if (keys['shift']) currentSpeed *= player.sprintMultiplier;
+
+            player.x += dx * currentSpeed;
+            player.y += dy * currentSpeed;
+
+            player.x = Math.max(50, Math.min(WORLD_WIDTH - 50, player.x));
+            player.y = Math.max(50, Math.min(WORLD_HEIGHT - 50, player.y));
+
+            camera.x += (player.x - canvas.width / 2 - camera.x) * 0.1;
+            camera.y += (player.y - canvas.height / 2 - camera.y) * 0.1;
+
+            let foundDistrict = 'Melody Plaza';
+            for (let d of districts) {
+                let dist = Math.hypot(player.x - d.x, player.y - d.y);
+                if (dist < d.radius) {
+                    foundDistrict = d.name;
+                    break;
+                }
+            }
+            if (foundDistrict !== currentDistrict) {
+                currentDistrict = foundDistrict;
+                showDistrictBanner(currentDistrict);
+            }
+
+            nearbyBuilding = null;
+            nearbyNpc = null;
+
+            for (let b of buildings) {
+                let dist = Math.hypot(player.x - (b.x + b.w/2), player.y - (b.y + b.h/2));
+                if (dist < 120) {
+                    nearbyBuilding = b;
+                    break;
+                }
+            }
+
+            for (let n of npcs) {
+                let dist = Math.hypot(player.x - n.x, player.y - n.y);
+                if (dist < 90) {
+                    nearbyNpc = n;
+                    break;
+                }
+            }
+
+            for (let c of collectibles) {
+                if (!c.collected) {
+                    let dist = Math.hypot(player.x - c.x, player.y - c.y);
+                    if (dist < 35) {
+                        c.collected = true;
+                        if (c.type === 'note') {
+                            player.notes += 1;
+                            addXp(10);
+                            showToast('🎵 Musical Note!', 'Collected +1 Note and 10 XP.');
+                        } else {
+                            player.stars += 1;
+                            addXp(25);
+                            showToast('⭐ Golden Star!', 'Collected +1 Star and 25 XP.');
+                        }
+                        updateHud();
+                    }
+                }
+            }
+
+            const prompt = document.getElementById('interaction-prompt');
+            if (nearbyBuilding) {
+                prompt.innerText = `Press [E] to Enter: ${nearbyBuilding.name}`;
+                prompt.classList.remove('hidden');
+            } else if (nearbyNpc) {
+                prompt.innerText = `Press [E] to Talk: ${nearbyNpc.name}`;
+                prompt.classList.remove('hidden');
+            } else {
+                prompt.classList.add('hidden');
+            }
+        }
+
+        function render() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            ctx.save();
+            ctx.translate(-camera.x, -camera.y);
+
+            for (let d of districts) {
+                ctx.beginPath();
+                ctx.arc(d.x, d.y, d.radius, 0, Math.PI * 2);
+                ctx.fillStyle = d.color;
+                ctx.fill();
+                ctx.lineWidth = 3;
+                ctx.strokeStyle = d.border;
+                ctx.setLineDash([10, 10]);
+                ctx.stroke();
+                ctx.setLineDash([]);
+
+                ctx.fillStyle = '#94a3b8';
+                ctx.font = 'bold 20px Inter, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(`${d.icon} ${d.name}`, d.x, d.y - d.radius + 40);
+            }
+
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
+            ctx.lineWidth = 1;
+            const gridSize = 100;
+            for (let x = 0; x <= WORLD_WIDTH; x += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, WORLD_HEIGHT);
+                ctx.stroke();
+            }
+            for (let y = 0; y <= WORLD_HEIGHT; y += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(WORLD_WIDTH, y);
+                ctx.stroke();
+            }
+
+            for (let c of collectibles) {
+                if (!c.collected) {
+                    ctx.save();
+                    ctx.translate(c.x, c.y);
+                    ctx.font = '20px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(c.type === 'note' ? '🎵' : '⭐', 0, Math.sin(Date.now() / 200 + c.x) * 5);
+                    ctx.restore();
+                }
+            }
+
+            for (let b of buildings) {
+                ctx.fillStyle = b.color;
+                if (ctx.roundRect) {
+                    ctx.beginPath();
+                    ctx.roundRect(b.x, b.y, b.w, b.h, 12);
+                    ctx.fill();
+                } else {
+                    ctx.fillRect(b.x, b.y, b.w, b.h);
+                }
+                ctx.strokeStyle = '#ffffff33';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 14px Inter, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(`${b.icon} ${b.name}`, b.x + b.w / 2, b.y + b.h / 2 + 5);
+            }
+
+            for (let n of npcs) {
+                ctx.fillStyle = '#334155';
+                ctx.beginPath();
+                ctx.arc(n.x, n.y, 22, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.lineWidth = 3;
+                ctx.strokeStyle = '#38bdf8';
+                ctx.stroke();
+
+                ctx.font = '22px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(n.icon, n.x, n.y);
+
+                ctx.fillStyle = '#f8fafc';
+                ctx.font = 'bold 12px Inter, sans-serif';
+                ctx.fillText(n.name, n.x, n.y - 32);
+            }
+
+            ctx.shadowColor = 'rgba(56, 189, 248, 0.5)';
+            ctx.shadowBlur = 15;
+            ctx.fillStyle = player.color;
+            ctx.beginPath();
+            ctx.arc(player.x, player.y, player.size, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+
+            ctx.font = '20px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('🎸', player.x, player.y);
+
+            ctx.restore();
+        }
+
+        function handleInteraction() {
+            if (activeModalOpen) return;
+
+            if (nearbyBuilding) {
+                openChallengeModal(nearbyBuilding.challengeType);
+            } else if (nearbyNpc) {
+                openNpcDialog(nearbyNpc);
+            } else {
+                showToast('ℹ️ Exploration', 'Walk up to buildings or musicians with [E] to interact.');
+            }
+        }
+
+        function openNpcDialog(npc) {
+            activeModalOpen = true;
+            const modal = document.getElementById('game-modal');
+            const content = document.getElementById('modal-content');
+
+            content.innerHTML = `
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center gap-3">
+                        <span class="text-3xl">${npc.icon}</span>
+                        <div>
+                            <h2 class="text-xl font-extrabold text-white">${npc.name}</h2>
+                            <p class="text-xs text-cyan-400">${npc.district}</p>
+                        </div>
+                    </div>
+                    <button onclick="closeModal()" class="text-slate-400 hover:text-white text-xl font-bold px-3 py-1 bg-slate-800 rounded-xl">✕</button>
+                </div>
+                <div class="bg-slate-800/60 border border-slate-700/60 p-4 rounded-2xl mb-6 text-slate-200 text-sm leading-relaxed">
+                    "${npc.dialog}"
+                </div>
+                <div class="flex gap-3 justify-end">
+                    <button onclick="closeModal()" class="bg-slate-700 hover:bg-slate-600 text-white font-bold px-5 py-2.5 rounded-xl transition">Close</button>
+                    <button onclick="closeModal(); triggerDistrictQuest('${npc.district}')" class="bg-gradient-to-r from-cyan-500 to-indigo-600 hover:opacity-90 text-white font-bold px-6 py-2.5 rounded-xl transition shadow-lg">Accept Quest ✨</button>
+                </div>
+            `;
+            modal.classList.remove('hidden');
+        }
+
+        function triggerDistrictQuest(districtName) {
+            if (districtName === 'Guitar Grove') openChallengeModal('guitar');
+            else if (districtName === 'Harmony Hills') openChallengeModal('theory');
+            else if (districtName === 'Rhythm City') openChallengeModal('rhythm');
+            else if (districtName === 'Creator Studio') openChallengeModal('studio');
+            else showToast('🌟 Melody Plaza', 'Explore the world and complete challenges in all 4 districts!');
+        }
+
+        function openChallengeModal(type) {
+            activeModalOpen = true;
+            const modal = document.getElementById('game-modal');
+            const content = document.getElementById('modal-content');
+
+            if (type === 'guitar') {
+                content.innerHTML = `
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center gap-3">
+                            <span class="text-3xl">🎸</span>
+                            <div>
+                                <h2 class="text-xl font-extrabold text-white">Guitar Grove Chord Challenge</h2>
+                                <p class="text-xs text-emerald-400">Match the legendary chord progression: G – Em – C – D</p>
+                            </div>
+                        </div>
+                        <button onclick="closeModal()" class="text-slate-400 hover:text-white text-xl font-bold px-3 py-1 bg-slate-800 rounded-xl">✕</button>
+                    </div>
+                    <div class="space-y-4 my-2">
+                        <p class="text-sm text-slate-300">Strum the correct chord sequence for Ed Sheeran's "Perfect" progression:</p>
+                        <div class="grid grid-cols-2 gap-3">
+                            <button onclick="checkChordAnswer('G')" class="p-4 bg-slate-800 hover:bg-emerald-600/30 border border-slate-700 hover:border-emerald-500 rounded-2xl font-bold text-lg transition flex items-center justify-center gap-2">🎸 G Major</button>
+                            <button onclick="checkChordAnswer('Em')" class="p-4 bg-slate-800 hover:bg-emerald-600/30 border border-slate-700 hover:border-emerald-500 rounded-2xl font-bold text-lg transition flex items-center justify-center gap-2">🎸 E Minor (Em)</button>
+                            <button onclick="checkChordAnswer('C')" class="p-4 bg-slate-800 hover:bg-emerald-600/30 border border-slate-700 hover:border-emerald-500 rounded-2xl font-bold text-lg transition flex items-center justify-center gap-2">🎸 C Major</button>
+                            <button onclick="checkChordAnswer('D')" class="p-4 bg-slate-800 hover:bg-emerald-600/30 border border-slate-700 hover:border-emerald-500 rounded-2xl font-bold text-lg transition flex items-center justify-center gap-2">🎸 D Major</button>
+                        </div>
+                        <div id="chord-feedback" class="text-center font-bold text-sm text-cyan-400 h-6">Target: Strum G first!</div>
+                    </div>
+                `;
+            } else if (type === 'theory') {
+                content.innerHTML = `
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center gap-3">
+                            <span class="text-3xl">🎼</span>
+                            <div>
+                                <h2 class="text-xl font-extrabold text-white">Temple of Harmony Quiz</h2>
+                                <p class="text-xs text-purple-400">Test your knowledge of intervals and scales.</p>
+                            </div>
+                        </div>
+                        <button onclick="closeModal()" class="text-slate-400 hover:text-white text-xl font-bold px-3 py-1 bg-slate-800 rounded-xl">✕</button>
+                    </div>
+                    <div class="space-y-4 my-2">
+                        <p class="text-sm text-slate-200 font-semibold">What notes make up a standard C Major chord?</p>
+                        <div class="flex flex-col gap-2">
+                            <button onclick="checkTheoryAnswer(false)" class="p-3 bg-slate-800 hover:bg-purple-600/30 border border-slate-700 rounded-xl text-left text-sm transition">A – C – E</button>
+                            <button onclick="checkTheoryAnswer(true)" class="p-3 bg-slate-800 hover:bg-purple-600/30 border border-slate-700 rounded-xl text-left text-sm transition">C – E – G (Root, Major 3rd, Fifth)</button>
+                            <button onclick="checkTheoryAnswer(false)" class="p-3 bg-slate-800 hover:bg-purple-600/30 border border-slate-700 rounded-xl text-left text-sm transition">G – B – D – F</button>
+                        </div>
+                    </div>
+                `;
+            } else if (type === 'rhythm') {
+                content.innerHTML = `
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center gap-3">
+                            <span class="text-3xl">🥁</span>
+                            <div>
+                                <h2 class="text-xl font-extrabold text-white">Rhythm Underground Beat Tap</h2>
+                                <p class="text-xs text-red-400">Hit the beat in time to score points!</p>
+                            </div>
+                        </div>
+                        <button onclick="closeModal()" class="text-slate-400 hover:text-white text-xl font-bold px-3 py-1 bg-slate-800 rounded-xl">✕</button>
+                    </div>
+                    <div class="space-y-6 my-4 text-center">
+                        <div id="rhythm-display" class="text-6xl font-extrabold tracking-widest text-red-400 py-6 bg-slate-950 rounded-2xl border border-red-500/30">🥁 • • •</div>
+                        <p class="text-sm text-slate-300">Click the beat button perfectly on time!</p>
+                        <button onclick="tapRhythmBeat()" class="w-full bg-red-600 hover:bg-red-500 text-white font-extrabold py-4 rounded-2xl shadow-xl transition active:scale-95 text-lg">TAP BEAT 🎯</button>
+                        <div id="rhythm-score" class="font-bold text-sm text-slate-400">Score: 0 / 5 hits</div>
+                    </div>
+                `;
+            } else if (type === 'studio') {
+                content.innerHTML = `
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center gap-3">
+                            <span class="text-3xl">🎹</span>
+                            <div>
+                                <h2 class="text-xl font-extrabold text-white">Creator Studio Beat Maker</h2>
+                                <p class="text-xs text-amber-400">Trigger live synth and drum loops!</p>
+                            </div>
+                        </div>
+                        <button onclick="closeModal()" class="text-slate-400 hover:text-white text-xl font-bold px-3 py-1 bg-slate-800 rounded-xl">✕</button>
+                    </div>
+                    <div class="grid grid-cols-4 gap-3 my-4">
+                        <button onclick="playBeatSound('Kick')" class="p-6 bg-amber-600/20 hover:bg-amber-600/40 border border-amber-500/50 rounded-2xl font-bold text-amber-300 transition flex flex-col items-center gap-2"><span>🥁</span> Kick</button>
+                        <button onclick="playBeatSound('Snare')" class="p-6 bg-amber-600/20 hover:bg-amber-600/40 border border-amber-500/50 rounded-2xl font-bold text-amber-300 transition flex flex-col items-center gap-2"><span>🥁</span> Snare</button>
+                        <button onclick="playBeatSound('Synth')" class="p-6 bg-amber-600/20 hover:bg-amber-600/40 border border-amber-500/50 rounded-2xl font-bold text-amber-300 transition flex flex-col items-center gap-2"><span>🎹</span> Synth</button>
+                        <button onclick="playBeatSound('Bass')" class="p-6 bg-amber-600/20 hover:bg-amber-600/40 border border-amber-500/50 rounded-2xl font-bold text-amber-300 transition flex flex-col items-center gap-2"><span>🎸</span> Bass</button>
+                    </div>
+                    <p class="text-xs text-center text-slate-400">Creating beats increases your Production skill!</p>
+                `;
+            } else {
+                content.innerHTML = `
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="text-xl font-extrabold text-white">🌟 Grand Melody Stage</h2>
+                        <button onclick="closeModal()" class="text-slate-400 hover:text-white text-xl font-bold px-3 py-1 bg-slate-800 rounded-xl">✕</button>
+                    </div>
+                    <p class="text-sm text-slate-300 mb-4">Welcome to the heart of Melody Mello! Explore all 4 districts, complete challenges, and become the ultimate music maestro.</p>
+                    <button onclick="closeModal(); addXp(50); player.stars += 1; updateHud(); showToast('🌟 Stage Performance!', 'Earned 50 XP & 1 Star!')" class="w-full bg-gradient-to-r from-cyan-500 to-indigo-600 text-white font-bold py-3 rounded-xl">Claim Daily Performance Bonus ✨</button>
+                `;
+            }
+
+            modal.classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('game-modal').classList.add('hidden');
+            document.getElementById('sidebar-modal').classList.add('hidden');
+            activeModalOpen = false;
+        }
+
+        let guitarStep = 0;
+        const guitarSequence = ['G', 'Em', 'C', 'D'];
+        function checkChordAnswer(chord) {
+            const feedback = document.getElementById('chord-feedback');
+            if (chord === guitarSequence[guitarStep]) {
+                guitarStep++;
+                if (guitarStep === guitarSequence.length) {
+                    feedback.innerHTML = '🎉 AMAZING! Progression complete! (+100 XP, +1 Star)';
+                    addXp(100);
+                    player.stars += 1;
+                    player.skills.guitar += 15;
+                    updateHud();
+                    setTimeout(closeModal, 2000);
+                } else {
+                    feedback.innerHTML = `Correct! Next chord: <strong>${guitarSequence[guitarStep]}</strong>`;
+                }
+            } else {
+                guitarStep = 0;
+                feedback.innerHTML = '❌ Incorrect chord! Resetting to G.';
+            }
+        }
+
+        function checkTheoryAnswer(isCorrect) {
+            if (isCorrect) {
+                showToast('🎼 Correct!', 'Theory master! Earned 75 XP and Theory skill up.');
+                addXp(75);
+                player.skills.theory += 10;
+                updateHud();
+                closeModal();
+            } else {
+                showToast('❌ Incorrect', 'Try again! Review your intervals.');
+            }
+        }
+
+        let rhythmHits = 0;
+        function tapRhythmBeat() {
+            rhythmHits++;
+            document.getElementById('rhythm-score').innerText = `Score: ${rhythmHits} / 5 hits`;
+            if (rhythmHits >= 5) {
+                showToast('🥁 Rhythm Master!', 'Completed rhythm challenge! (+80 XP)');
+                addXp(80);
+                player.skills.rhythm += 12;
+                updateHud();
+                rhythmHits = 0;
+                setTimeout(closeModal, 1500);
+            }
+        }
+
+        function playBeatSound(instrument) {
+            showToast(`🎛️ ${instrument} Played!`, 'Production skill increased!');
+            player.skills.production += 5;
+            addXp(20);
+            updateHud();
+        }
+
+        function openInventoryModal() {
+            activeModalOpen = true;
+            const modal = document.getElementById('sidebar-modal');
+            const content = document.getElementById('sidebar-content');
+
+            content.innerHTML = `
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-xl font-extrabold text-white flex items-center gap-2">🎒 Player Inventory</h2>
+                    <button onclick="closeModal()" class="text-slate-400 hover:text-white text-xl font-bold px-3 py-1 bg-slate-800 rounded-xl">✕</button>
+                </div>
+                <div class="grid grid-cols-2 gap-3 overflow-y-auto max-h-60 my-2 pr-1">
+                    ${player.inventory.map(item => `
+                        <div class="bg-slate-800/80 border border-slate-700 p-3 rounded-2xl flex items-center gap-3">
+                            <span class="text-2xl">${item.icon}</span>
+                            <div>
+                                <h4 class="font-bold text-sm text-white">${item.name}</h4>
+                                <p class="text-[10px] text-slate-400">${item.desc}</p>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+                <div class="mt-4 pt-4 border-t border-slate-800 flex justify-between items-center text-sm text-slate-300">
+                    <span>🎵 Collected Notes: <strong class="text-emerald-400">${player.notes}</strong></span>
+                    <span>⭐ Stars: <strong class="text-amber-400">${player.stars}</strong></span>
+                </div>
+            `;
+            modal.classList.remove('hidden');
+        }
+
+        function openSkillModal() {
+            activeModalOpen = true;
+            const modal = document.getElementById('sidebar-modal');
+            const content = document.getElementById('sidebar-content');
+
+            content.innerHTML = `
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-xl font-extrabold text-white flex items-center gap-2">📈 Skill Progression</h2>
+                    <button onclick="closeModal()" class="text-slate-400 hover:text-white text-xl font-bold px-3 py-1 bg-slate-800 rounded-xl">✕</button>
+                </div>
+                <div class="space-y-4 my-2">
+                    <div>
+                        <div class="flex justify-between text-xs font-bold text-slate-300 mb-1">
+                            <span>🎸 Guitar Mastery</span>
+                            <span class="text-emerald-400">${player.skills.guitar} / 100</span>
+                        </div>
+                        <div class="w-full bg-slate-800 h-2.5 rounded-full overflow-hidden"><div class="bg-emerald-500 h-full" style="width: ${player.skills.guitar}%"></div></div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-xs font-bold text-slate-300 mb-1">
+                            <span>🎼 Music Theory</span>
+                            <span class="text-purple-400">${player.skills.theory} / 100</span>
+                        </div>
+                        <div class="w-full bg-slate-800 h-2.5 rounded-full overflow-hidden"><div class="bg-purple-500 h-full" style="width: ${player.skills.theory}%"></div></div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-xs font-bold text-slate-300 mb-1">
+                            <span>🥁 Rhythm & Timing</span>
+                            <span class="text-red-400">${player.skills.rhythm} / 100</span>
+                        </div>
+                        <div class="w-full bg-slate-800 h-2.5 rounded-full overflow-hidden"><div class="bg-red-500 h-full" style="width: ${player.skills.rhythm}%"></div></div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-xs font-bold text-slate-300 mb-1">
+                            <span>🎹 Production & Beat Making</span>
+                            <span class="text-amber-400">${player.skills.production} / 100</span>
+                        </div>
+                        <div class="w-full bg-slate-800 h-2.5 rounded-full overflow-hidden"><div class="bg-amber-500 h-full" style="width: ${player.skills.production}%"></div></div>
+                    </div>
+                </div>
+            `;
+            modal.classList.remove('hidden');
+        }
+
+        function addXp(amount) {
+            player.xp += amount;
+            if (player.xp >= player.maxXp) {
+                player.xp -= player.maxXp;
+                player.level += 1;
+                player.maxXp = Math.floor(player.maxXp * 1.4);
+                showToast('🎉 LEVEL UP!', `You reached Level ${player.level}! All skills boosted.`);
+            }
+            updateHud();
+        }
+
+        function updateHud() {
+            document.getElementById('player-name').innerText = player.name;
+            document.getElementById('player-level-badge').innerText = `Lvl ${player.level}`;
+            document.getElementById('star-count').innerText = player.stars;
+            document.getElementById('note-count').innerText = player.notes;
+            const xpPercent = Math.min(100, (player.xp / player.maxXp) * 100);
+            document.getElementById('xp-bar').style.width = `${xpPercent}%`;
+        }
+
+        function showDistrictBanner(name) {
+            const banner = document.getElementById('district-banner');
+            banner.innerText = `📍 ${name.toUpperCase()}`;
+            banner.style.opacity = '1';
+            setTimeout(() => {
+                banner.style.opacity = '0';
+            }, 3000);
+        }
+
+        function showToast(title, desc) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-title').innerText = title;
+            document.getElementById('toast-desc').innerText = desc;
+            toast.classList.remove('translate-x-96', 'opacity-0');
+            setTimeout(() => {
+                toast.classList.add('translate-x-96', 'opacity-0');
+            }, 3500);
+        }
+
+        function saveGame() {
+            localStorage.setItem(SAVE_KEY, JSON.stringify(player));
+            showToast('💾 Game Saved', 'Your progress is stored in browser memory.');
+        }
+
+        function loadGame() {
+            const saved = localStorage.getItem(SAVE_KEY);
+            if (saved) {
+                try {
+                    const data = JSON.parse(saved);
+                    player = Object.assign({}, player, data);
+                    updateHud();
+                    showToast('📂 Game Loaded', 'Welcome back, Maestro!');
+                } catch (e) {
+                    console.error('Failed to load save');
+                }
+            }
+        }
+    </script>
+</body>
+</html>
